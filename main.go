@@ -25,6 +25,7 @@ func NewServer(host string, port string, statusCode int) *ConnServer {
 
 // Attempt to start the server, and if we can't, exit because what else is there?
 func (s *ConnServer) StartServer() {
+	log.Println("Listening on "+s.host+":"+s.port)
 	listen, err := net.Listen("tcp", s.host+":"+s.port)
 	if err != nil {
 		log.Fatal("Listening has failed: ", err)
@@ -42,12 +43,12 @@ func (s *ConnServer) StartServer() {
 				defer conn.Close()
 				continue
 			}
-			go DumpRequest(conn)
+			go DumpRequest(conn, s.statusCode)
 		}
 	}()
 }
 
-func DumpRequest(conn net.Conn) {
+func DumpRequest(conn net.Conn, statusCode int) {
 	t := time.Now()
 	tfmt := t.Format("20060102150405")
 	thttpfmt := t.Format(http.TimeFormat)
@@ -72,7 +73,6 @@ func DumpRequest(conn net.Conn) {
 	}
 	defer req.Body.Close()
 
-	// Copies the decoded body; chunked-transfer framing is not included.
 	if _, err := io.Copy(io.Discard, req.Body); err != nil {
 		log.Println("reading request body:", err)
 		return
@@ -80,21 +80,17 @@ func DumpRequest(conn net.Conn) {
 
 	log.Printf("Saved request to %s; request: %s %s", f.Name(), req.Method, req.URL)
 
-	response_OK := "HTTP/1.1 200 OK\nContent-Type: text/html; charset=UTF-8\nServer: gowebdump 0.1\nDate: " + thttpfmt + "Content-Length: 2\n\nOK"
-	//response_BADRESPONSE := "HTTP/1.1 400 Bad Request\nContent-Type: text/html; charset=UTF-8\nServer: gowebdump 0.1\nDate: " + thttpfmt + "Content-Length: 0\n\n"
-	//response_NOTFOUND := "HTTP/1.1 404 Not Found\nContent-Type: text/html; charset=UTF-8\nServer: gowebdump 0.1\nDate: " + thttpfmt + "Content-Length: 0\n\n"
-
-	if _, err := io.WriteString(conn, response_OK); err != nil {
-		log.Println("Error writing response:", err)
+	response := ""
+	if statusCode == 200 {
+		response = "HTTP/1.1 200 OK\nContent-Type: text/html; charset=UTF-8\nServer: gowebdump 0.2\nDate: " + thttpfmt + "\nContent-Length: 2\n\nOK"
+	} else if statusCode == 400 {
+		response = "HTTP/1.1 400 Bad Request\nContent-Type: text/html; charset=UTF-8\nServer: gowebdump 0.2\nDate: " + thttpfmt + "\nContent-Length: 0\n\n"
+	} else if statusCode == 404 {
+		response = "HTTP/1.1 404 Not Found\nContent-Type: text/html; charset=UTF-8\nServer: gowebdump 0.2\nDate: " + thttpfmt + "\nContent-Length: 0\n\n"
 	}
-}
 
-func Serve() {
-	mux := http.NewServeMux()
-
-	err := http.ListenAndServe(":7780", mux)
-	if err != nil {
-		log.Fatal(err)
+	if _, err := io.WriteString(conn, response); err != nil {
+		log.Println("Error writing response:", err)
 	}
 }
 
@@ -103,6 +99,8 @@ func main() {
 	port := flag.String("port", "7780", "Port to bind to")
 	bindaddr := flag.String("bindaddr", "0.0.0.0", "Listen address")
 	statuscode := flag.Int("statuscode", 200, "Status Code to return")
+
+	flag.Parse()
 
 	server := NewServer(*bindaddr, *port, *statuscode)
 	server.StartServer()
