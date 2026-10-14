@@ -1,5 +1,6 @@
 # gowebdump 0.2
 Simple application to dump all headers and body to an HTTP server into files in /tmp
+
 Based on https://github.com/todpunk/gowebdump
 
 Changes:
