@@ -1,0 +1,58 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goarch: 386
+            goarm: ""
+          - goarch: amd64
+            goarm: ""
+          - goarch: arm
+            goarm: "6"
+          - goarch: arm
+            goarm: "7"
+          - goarch: arm64
+            goarm: ""
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build
+        env:
+          GOOS: linux
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
+          CGO_ENABLED: "0"
+        run: |
+          output="gowebdump-linux-${GOARCH}"
+          if [ "$GOARCH" = "arm" ]; then
+            output="${output}v${GOARM}"
+          fi
+          go build -trimpath -ldflags="-s -w" -o "$output" .
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: gowebdump-linux-${{ matrix.goarch }}${{ matrix.goarm }}
+          path: gowebdump-linux-*
+          if-no-files-found: error
+
