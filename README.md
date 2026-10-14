@@ -1,7 +1,12 @@
-# gowebdump
+# gowebdump 0.2
+Simple application to dump all headers and body to an HTTP server into files in /tmp
+Based on https://github.com/todpunk/gowebdump
 
-I sometimes need to dump requests. I used to have a python app, but wanted something simpler, so here's a simple single-file go app that listens on 7780 and shoves each request in a timestamp names temp-file.
-
-It has a dockerfile too. Use it for whatever.
+Changes:
+* Supports --bindaddr
+* Supports --port
+* Support --responsecode (200,400,404)
+* Fixes issue where the client will hang
+* Various cleanup/code changes
 
 Apache 2.0 Licensed
